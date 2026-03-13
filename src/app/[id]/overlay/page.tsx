@@ -109,6 +109,7 @@ export default function OverlayPage({ params }: { params: { id: string } }) {
 
   const [displayTime, setDisplayTime] = useState("00:00:00");
   const [events, setEvents] = useState<DisplayEvent[]>([]);
+  const [recentEvents, setRecentEvents] = useState<DisplayEvent[]>([]);
   const [pulse, setPulse] = useState(false);
 
   const endTimeRef = useRef<number>(0);
@@ -181,12 +182,30 @@ export default function OverlayPage({ params }: { params: { id: string } }) {
         const res = await fetch(`/api/${id}/events`);
         if (!res.ok) return;
         const allEvents: StoredEvent[] = await res.json();
-        if (allEvents.length === 0) return;
 
         const settings = overlaySettingsRef.current;
+
+        // Build recent events list (always show last 5, filtered by settings)
+        const recentFiltered = allEvents
+          .filter((evt) => {
+            const settingKey = EVENT_TYPE_TO_SETTING[evt.type];
+            if (!settingKey) return true;
+            return settings.enabled_events[settingKey];
+          })
+          .slice(0, 5)
+          .map((evt) => ({
+            id: evt.id,
+            text: buildEventText(evt),
+            timeAdded: formatTimeAdded(evt.time_added_ms),
+            createdAt: new Date(evt.created_at).getTime(),
+          }));
+        setRecentEvents(recentFiltered);
+
+        if (allEvents.length === 0) return;
+
         const latestId = allEvents[0]?.id;
 
-        // First load: record existing events without displaying them
+        // First load: record existing events without displaying popup notifications
         if (!initialLoadDoneRef.current) {
           initialLoadDoneRef.current = true;
           lastEventIdRef.current = latestId;
@@ -375,6 +394,35 @@ export default function OverlayPage({ params }: { params: { id: string } }) {
           animation: pulseGlow 0.6s ease-in-out;
         }
 
+        .recent-events {
+          margin-top: 20px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 4px;
+          max-width: 500px;
+          width: 100%;
+        }
+
+        .recent-event {
+          background: rgba(0, 0, 0, 0.45);
+          padding: 6px 16px;
+          border-radius: 6px;
+          color: rgba(255, 255, 255, 0.85);
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          font-size: 0.85rem;
+          white-space: nowrap;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+          width: 100%;
+          text-align: center;
+        }
+
+        .recent-event:first-child {
+          font-size: 0.95rem;
+          color: rgba(255, 255, 255, 0.95);
+          background: rgba(0, 0, 0, 0.55);
+        }
+
         .event-feed {
           position: fixed;
           bottom: 40px;
@@ -408,6 +456,15 @@ export default function OverlayPage({ params }: { params: { id: string } }) {
         <div className={`timer-display${pulse ? " pulse" : ""}`}>
           {displayTime}
         </div>
+        {recentEvents.length > 0 && (
+          <div className="recent-events">
+            {recentEvents.map((evt) => (
+              <div key={evt.id} className="recent-event">
+                {evt.text}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="event-feed">
