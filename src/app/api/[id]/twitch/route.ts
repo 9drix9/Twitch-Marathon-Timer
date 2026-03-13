@@ -71,7 +71,7 @@ export async function POST(
       `?client_id=${TWITCH_CLIENT_ID}` +
       `&redirect_uri=${encodeURIComponent(redirectUri)}` +
       `&response_type=code` +
-      `&scope=moderator:read:followers+channel:read:redemptions` +
+      `&scope=channel:read:subscriptions+bits:read+moderator:read:followers+channel:read:redemptions` +
       `&state=${state}`;
     return NextResponse.json({ url: authUrl });
   }

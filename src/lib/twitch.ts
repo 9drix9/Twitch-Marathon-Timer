@@ -217,7 +217,13 @@ export async function createAllSubscriptions(
       created.push(sub.label);
     } else {
       const err = await res.json().catch(() => ({}));
-      errors.push(`${sub.label}: ${(err as Record<string, string>).message || res.status}`);
+      const msg = (err as Record<string, string>).message || String(res.status);
+      // "max subscriptions" means it already exists — treat as success
+      if (msg.includes("maximum") || msg.includes("already exists")) {
+        created.push(sub.label);
+      } else {
+        errors.push(`${sub.label}: ${msg}`);
+      }
     }
   }
 
