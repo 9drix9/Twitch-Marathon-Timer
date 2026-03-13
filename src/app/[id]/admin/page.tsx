@@ -68,6 +68,33 @@ function minutesToMs(min: number): number {
   return min * 60000;
 }
 
+function friendlyEventName(type: string, detail?: Record<string, unknown>): string {
+  switch (type) {
+    case "sub_tier1": return "Tier 1 Sub";
+    case "sub_tier2": return "Tier 2 Sub";
+    case "sub_tier3": return "Tier 3 Sub";
+    case "gifted_sub": {
+      const count = (detail?.count || 1) as number;
+      return `${count} Gift Sub${count > 1 ? "s" : ""}`;
+    }
+    case "bits": {
+      const bits = (detail?.bits || 0) as number;
+      return `${bits} Bits`;
+    }
+    case "donation": {
+      const amount = (detail?.amount || 0) as number;
+      return `$${amount} Donation`;
+    }
+    case "follow": return "Follow";
+    case "raid": {
+      const viewers = (detail?.viewers || 0) as number;
+      return `Raid (${viewers} viewers)`;
+    }
+    case "custom_reward": return "Channel Points";
+    default: return type;
+  }
+}
+
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = {
@@ -397,9 +424,9 @@ export default function AdminPage({ params }: { params: { id: string } }) {
     return () => clearInterval(interval);
   }, [fetchTimer]);
 
-  // Poll events every 10 seconds
+  // Poll events every 3 seconds
   useEffect(() => {
-    const interval = setInterval(fetchEvents, 10000);
+    const interval = setInterval(fetchEvents, 3000);
     return () => clearInterval(interval);
   }, [fetchEvents]);
 
@@ -835,7 +862,7 @@ export default function AdminPage({ params }: { params: { id: string } }) {
               <div key={evt.id || i} style={styles.eventItem}>
                 <div>
                   <span style={{ color: "var(--purple)", marginRight: "0.5rem" }}>
-                    {evt.type}
+                    {friendlyEventName(evt.type, evt.detail)}
                   </span>
                   {evt.detail?.user ? (
                     <span style={{ color: "var(--text-dim)" }}>{String(evt.detail.user)}</span>
@@ -843,8 +870,8 @@ export default function AdminPage({ params }: { params: { id: string } }) {
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                   {evt.time_added_ms !== undefined && evt.time_added_ms > 0 && (
-                    <span style={{ color: "var(--cyan)", fontSize: "0.8rem" }}>
-                      +{msToMinutes(evt.time_added_ms)}m
+                    <span style={{ color: "var(--cyan)", fontSize: "0.8rem", fontWeight: 600 }}>
+                      +{Math.floor(evt.time_added_ms / 60000)}:{String(Math.floor((evt.time_added_ms % 60000) / 1000)).padStart(2, "0")}
                     </span>
                   )}
                   {evt.created_at && (
@@ -908,10 +935,10 @@ export default function AdminPage({ params }: { params: { id: string } }) {
           </div>
           <div
             style={styles.urlBox}
-            onClick={() => copyUrl(`${baseUrl}/${id}/simulate`, "simulate")}
+            onClick={() => copyUrl(`${baseUrl}/${id}/simulator`, "simulate")}
             title="Click to copy"
           >
-            {baseUrl}/{id}/simulate
+            {baseUrl}/{id}/simulator
             {copied === "simulate" && (
               <span style={{ marginLeft: "0.5rem", color: "var(--purple)", fontSize: "0.75rem" }}>
                 Copied!
