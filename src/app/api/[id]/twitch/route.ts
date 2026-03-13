@@ -14,7 +14,15 @@ export async function GET(
 ) {
   const { id } = params;
   const connection = await getTwitchConnection(id);
-  return NextResponse.json(connection);
+  if (!connection) {
+    return NextResponse.json({ connected: false });
+  }
+  return NextResponse.json({
+    connected: true,
+    username: connection.display_name,
+    user_id: connection.user_id,
+    login: connection.login,
+  });
 }
 
 export async function POST(

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 
 interface TimerState {
   remaining_ms: number;
-  is_running: boolean;
+  is_paused: boolean;
   ended: boolean;
 }
 
@@ -46,10 +46,9 @@ interface OverlaySettings {
 interface TimerEvent {
   id?: string;
   type: string;
-  username?: string;
-  added_ms?: number;
-  timestamp?: string;
-  meta?: Record<string, unknown>;
+  detail?: Record<string, unknown>;
+  time_added_ms?: number;
+  created_at?: string;
 }
 
 function formatTime(ms: number): string {
@@ -299,7 +298,7 @@ export default function AdminPage({ params }: { params: { id: string } }) {
   // Timer state
   const [timer, setTimer] = useState<TimerState>({
     remaining_ms: 0,
-    is_running: false,
+    is_paused: true,
     ended: false,
   });
 
@@ -484,7 +483,7 @@ export default function AdminPage({ params }: { params: { id: string } }) {
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
-  const isPaused = !timer.is_running && !timer.ended;
+  const isPaused = timer.is_paused && !timer.ended;
   const timerColor = timer.ended
     ? "var(--pink)"
     : isPaused
@@ -524,7 +523,7 @@ export default function AdminPage({ params }: { params: { id: string } }) {
           )}
         </div>
         <div style={styles.btnRow}>
-          {timer.is_running ? (
+          {!timer.is_paused ? (
             <button style={styles.btn} onClick={() => timerAction("pause")}>
               Pause
             </button>
@@ -838,19 +837,19 @@ export default function AdminPage({ params }: { params: { id: string } }) {
                   <span style={{ color: "var(--purple)", marginRight: "0.5rem" }}>
                     {evt.type}
                   </span>
-                  {evt.username && (
-                    <span style={{ color: "var(--text-dim)" }}>{evt.username}</span>
-                  )}
+                  {evt.detail?.user ? (
+                    <span style={{ color: "var(--text-dim)" }}>{String(evt.detail.user)}</span>
+                  ) : null}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                  {evt.added_ms !== undefined && evt.added_ms > 0 && (
+                  {evt.time_added_ms !== undefined && evt.time_added_ms > 0 && (
                     <span style={{ color: "var(--cyan)", fontSize: "0.8rem" }}>
-                      +{msToMinutes(evt.added_ms)}m
+                      +{msToMinutes(evt.time_added_ms)}m
                     </span>
                   )}
-                  {evt.timestamp && (
+                  {evt.created_at && (
                     <span style={{ color: "var(--text-dim)", fontSize: "0.75rem" }}>
-                      {new Date(evt.timestamp).toLocaleTimeString()}
+                      {new Date(evt.created_at).toLocaleTimeString()}
                     </span>
                   )}
                 </div>
