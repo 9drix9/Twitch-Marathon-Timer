@@ -21,10 +21,16 @@ interface TimeRules {
   raid_enabled: boolean;
 }
 
+interface TwitchSub {
+  type: string;
+  status: string;
+}
+
 interface TwitchConnection {
   connected?: boolean;
   username?: string;
   user_id?: string;
+  subscriptions?: TwitchSub[];
 }
 
 interface Integrations {
@@ -474,6 +480,19 @@ export default function AdminPage({ params }: { params: { id: string } }) {
     fetchTwitch();
   }
 
+  async function resubscribeTwitch() {
+    const res = await fetch(`/api/${id}/twitch`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "resubscribe" }),
+    });
+    const data = await res.json();
+    if (data.created) {
+      alert(`Subscriptions created: ${data.created.join(", ")}${data.errors?.length ? `\nErrors: ${data.errors.join(", ")}` : ""}`);
+    }
+    fetchTwitch();
+  }
+
   // ─── Integration Saving ──────────────────────────────────────────────────
 
   async function saveIntegration(field: string, value: string) {
@@ -578,13 +597,52 @@ export default function AdminPage({ params }: { params: { id: string } }) {
       <div style={styles.card}>
         <div style={styles.cardTitle}>Twitch Connection</div>
         {twitch.connected ? (
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <span style={{ fontFamily: "var(--font-mono)", color: "var(--cyan)" }}>
-              Connected as <strong>{twitch.username}</strong>
-            </span>
-            <button style={styles.btnDanger} onClick={disconnectTwitch}>
-              Disconnect
-            </button>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
+              <span style={{ fontFamily: "var(--font-mono)", color: "var(--cyan)" }}>
+                Connected as <strong>{twitch.username}</strong>
+              </span>
+              <button style={styles.btnDanger} onClick={disconnectTwitch}>
+                Disconnect
+              </button>
+              <button style={styles.btn} onClick={resubscribeTwitch}>
+                Re-subscribe Events
+              </button>
+            </div>
+
+            {/* Subscription Status */}
+            <div style={{ fontSize: "0.85rem", color: "var(--text-dim)", marginBottom: "0.5rem" }}>
+              EventSub Subscriptions:
+            </div>
+            {twitch.subscriptions && twitch.subscriptions.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                {twitch.subscriptions.map((sub, i) => {
+                  const friendly: Record<string, string> = {
+                    "channel.subscribe": "Subscriptions",
+                    "channel.subscription.gift": "Gift Subs",
+                    "channel.cheer": "Bits / Cheers",
+                    "channel.raid": "Raids",
+                    "channel.follow": "Follows",
+                    "channel.channel_points_custom_reward_redemption.add": "Channel Points",
+                  };
+                  const isEnabled = sub.status === "enabled";
+                  return (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontFamily: "var(--font-mono)", fontSize: "0.8rem" }}>
+                      <span style={{ color: isEnabled ? "#4ade80" : "var(--pink)", fontWeight: 700 }}>
+                        {isEnabled ? "ACTIVE" : sub.status.toUpperCase()}
+                      </span>
+                      <span style={{ color: "var(--text)" }}>
+                        {friendly[sub.type] || sub.type}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{ fontSize: "0.8rem", color: "var(--pink)", fontFamily: "var(--font-mono)" }}>
+                No active subscriptions found. Click &quot;Re-subscribe Events&quot; to set them up.
+              </div>
+            )}
           </div>
         ) : (
           <div>

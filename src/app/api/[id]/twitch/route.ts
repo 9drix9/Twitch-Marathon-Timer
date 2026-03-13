@@ -4,6 +4,8 @@ import {
   createOAuthState,
   removeTwitchConnection,
   deleteAllSubscriptions,
+  getAppAccessToken,
+  createAllSubscriptions,
 } from "@/lib/twitch";
 
 const TWITCH_CLIENT_ID = process.env.TWITCH_CLIENT_ID!;
@@ -15,13 +17,39 @@ export async function GET(
   const { id } = params;
   const connection = await getTwitchConnection(id);
   if (!connection) {
-    return NextResponse.json({ connected: false });
+    return NextResponse.json({ connected: false, subscriptions: [] });
   }
+
+  // Fetch active EventSub subscriptions for this user
+  let subscriptions: { type: string; status: string }[] = [];
+  try {
+    const appToken = await getAppAccessToken();
+    const res = await fetch(
+      `https://api.twitch.tv/helix/eventsub/subscriptions?user_id=${connection.user_id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${appToken}`,
+          "Client-Id": TWITCH_CLIENT_ID,
+        },
+      }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      subscriptions = (data.data || []).map(
+        (s: { type: string; status: string }) => ({
+          type: s.type,
+          status: s.status,
+        })
+      );
+    }
+  } catch {}
+
   return NextResponse.json({
     connected: true,
     username: connection.display_name,
     user_id: connection.user_id,
     login: connection.login,
+    subscriptions,
   });
 }
 
@@ -52,6 +80,18 @@ export async function POST(
     await removeTwitchConnection(id);
     await deleteAllSubscriptions();
     return NextResponse.json({ ok: true });
+  }
+
+  if (action === "resubscribe") {
+    const connection = await getTwitchConnection(id);
+    if (!connection) {
+      return NextResponse.json({ error: "Not connected" }, { status: 400 });
+    }
+    const proto = req.headers.get("x-forwarded-proto") || "https";
+    const host = req.headers.get("host")!;
+    const baseUrl = `${proto}://${host}`;
+    const result = await createAllSubscriptions(id, connection.user_id, baseUrl);
+    return NextResponse.json(result);
   }
 
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });
