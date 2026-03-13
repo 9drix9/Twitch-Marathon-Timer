@@ -115,6 +115,7 @@ export default function OverlayPage({ params }: { params: { id: string } }) {
   const isPausedRef = useRef(true);
   const remainingMsRef = useRef(0);
   const lastEventIdRef = useRef<string | null>(null);
+  const initialLoadDoneRef = useRef(false);
   const overlaySettingsRef = useRef<OverlaySettings>({
     enabled_events: {
       subs: true,
@@ -185,7 +186,9 @@ export default function OverlayPage({ params }: { params: { id: string } }) {
         const settings = overlaySettingsRef.current;
         const latestId = allEvents[0]?.id;
 
-        if (lastEventIdRef.current === null) {
+        // First load: record existing events without displaying them
+        if (!initialLoadDoneRef.current) {
+          initialLoadDoneRef.current = true;
           lastEventIdRef.current = latestId;
           return;
         }

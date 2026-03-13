@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
 interface TimerState {
   remaining_ms: number;
-  is_running: boolean;
+  is_paused: boolean;
   max_cap_ms?: number | null;
 }
 
@@ -45,7 +45,7 @@ function formatAdded(ms: number): string {
 }
 
 export default function SimulatorPage({ params }: { params: { id: string } }) {
-  const { id } = use(params as any) as { id: string };
+  const { id } = params;
   const [timer, setTimer] = useState<TimerState | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -155,13 +155,13 @@ export default function SimulatorPage({ params }: { params: { id: string } }) {
             </div>
             <div
               style={{
-                color: timer.is_running ? "var(--cyan)" : "var(--pink)",
+                color: !timer.is_paused ? "var(--cyan)" : "var(--pink)",
                 fontSize: "0.85rem",
                 marginTop: "0.5rem",
                 fontWeight: 600,
               }}
             >
-              {timer.is_running ? "RUNNING" : "PAUSED"}
+              {!timer.is_paused ? "RUNNING" : "PAUSED"}
             </div>
           </>
         ) : (
