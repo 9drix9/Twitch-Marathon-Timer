@@ -46,8 +46,8 @@ export async function POST(
 
   if (["add", "subtract", "reset", "set_cap"].includes(action)) {
     const msVal = action === "reset" ? (ms ?? 86400000) : ms;
-    if (typeof msVal !== "number" || msVal < 0 || msVal > 604800000) {
-      return NextResponse.json({ error: "Invalid ms value (0-604800000)" }, { status: 400 });
+    if (typeof msVal !== "number" || msVal < 0 || msVal > 2592000000) {
+      return NextResponse.json({ error: "Invalid ms value (0-2592000000)" }, { status: 400 });
     }
   }
 
