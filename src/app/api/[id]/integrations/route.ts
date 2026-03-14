@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { redis, keys } from "@/lib/db";
+import { verifyAdmin } from "@/lib/auth";
 
 interface Integrations {
   streamelements_jwt?: string;
@@ -17,6 +18,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const { id } = params;
+  if (!(await verifyAdmin(id, req))) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const stored = await redis().get(keys(id).integrations);
   const integrations: Integrations = stored
     ? (typeof stored === "string" ? JSON.parse(stored) : stored)
@@ -33,6 +37,9 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   const { id } = params;
+  if (!(await verifyAdmin(id, req))) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const body = await req.json();
   const { streamelements_jwt, streamlabs_token } = body;
 
@@ -61,6 +68,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   const { id } = params;
+  if (!(await verifyAdmin(id, req))) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   await redis().del(keys(id).integrations);
   return NextResponse.json({ ok: true });
 }

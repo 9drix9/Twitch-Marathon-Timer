@@ -4,6 +4,7 @@ import { redis, keys } from "@/lib/db";
 
 export async function POST() {
   const id = crypto.randomBytes(6).toString("hex"); // 12-char hex ID
+  const admin_secret = crypto.randomBytes(16).toString("hex"); // 32-char hex secret
   const k = keys(id);
 
   const startMs = parseInt(process.env.TIMER_START_SECONDS || "86400", 10) * 1000;
@@ -17,7 +18,8 @@ export async function POST() {
 
   await redis().set(k.meta, {
     created_at: new Date().toISOString(),
+    admin_secret,
   });
 
-  return NextResponse.json({ id });
+  return NextResponse.json({ id, admin_secret });
 }

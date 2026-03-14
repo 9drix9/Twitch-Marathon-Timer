@@ -23,6 +23,7 @@ export function keys(id: string) {
     twitchOAuthState: `mt:${id}:twitch:oauth_state`,
     integrations: `mt:${id}:integrations`,
     overlaySettings: `mt:${id}:overlay_settings`,
+    webhookSecret: `mt:${id}:webhook_secret`,
   } as const;
 }
 

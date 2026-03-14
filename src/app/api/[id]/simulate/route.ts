@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { computeTimeForEvent, getRules } from "@/config/time-rules";
 import { processEvent } from "@/lib/timer";
+import { verifyAdmin } from "@/lib/auth";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const { id } = params;
+
+  if (!(await verifyAdmin(id, req))) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const body = await req.json();
   const { type, meta } = body;
 

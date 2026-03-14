@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRules, saveRules } from "@/config/time-rules";
 import { redis, keys } from "@/lib/db";
+import { verifyAdmin } from "@/lib/auth";
 
 const DEFAULT_OVERLAY_SETTINGS = {
   enabled_events: {
@@ -38,6 +39,11 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   const { id } = params;
+
+  if (!(await verifyAdmin(id, req))) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const body = await req.json();
 
   if (body.type === "overlay") {

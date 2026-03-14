@@ -328,6 +328,35 @@ export default function AdminPage({ params }: { params: { id: string } }) {
   const { id } = params;
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
 
+  // Admin auth
+  const [adminSecret, setAdminSecret] = useState<string>("");
+  const [secretInput, setSecretInput] = useState("");
+  const [authError, setAuthError] = useState(false);
+  const [authLoaded, setAuthLoaded] = useState(false);
+
+  // Load secret from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem(`timer_${id}_secret`);
+    if (stored) setAdminSecret(stored);
+    setAuthLoaded(true);
+  }, [id]);
+
+  function submitSecret() {
+    const val = secretInput.trim();
+    if (!val) return;
+    localStorage.setItem(`timer_${id}_secret`, val);
+    setAdminSecret(val);
+    setAuthError(false);
+  }
+
+  // Auth header helper
+  function authHeaders(contentType = true): HeadersInit {
+    const h: HeadersInit = {};
+    if (contentType) h["Content-Type"] = "application/json";
+    if (adminSecret) h["Authorization"] = `Bearer ${adminSecret}`;
+    return h;
+  }
+
   // Timer state
   const [timer, setTimer] = useState<TimerState>({
     remaining_ms: 0,
@@ -384,18 +413,22 @@ export default function AdminPage({ params }: { params: { id: string } }) {
   }, [id]);
 
   const fetchTwitch = useCallback(async () => {
+    if (!adminSecret) return;
     try {
-      const res = await fetch(`/api/${id}/twitch`);
+      const res = await fetch(`/api/${id}/twitch`, { headers: authHeaders(false) });
+      if (res.status === 401) { setAuthError(true); return; }
       if (res.ok) setTwitch(await res.json());
     } catch {}
-  }, [id]);
+  }, [id, adminSecret]);
 
   const fetchIntegrations = useCallback(async () => {
+    if (!adminSecret) return;
     try {
-      const res = await fetch(`/api/${id}/integrations`);
+      const res = await fetch(`/api/${id}/integrations`, { headers: authHeaders(false) });
+      if (res.status === 401) { setAuthError(true); return; }
       if (res.ok) setIntegrations(await res.json());
     } catch {}
-  }, [id]);
+  }, [id, adminSecret]);
 
   const fetchOverlaySettings = useCallback(async () => {
     try {
@@ -414,15 +447,18 @@ export default function AdminPage({ params }: { params: { id: string } }) {
     } catch {}
   }, [id]);
 
-  // Initial load
+  // Initial load + reload when secret changes
   useEffect(() => {
+    if (!authLoaded) return;
     fetchTimer();
     fetchRules();
-    fetchTwitch();
-    fetchIntegrations();
     fetchOverlaySettings();
     fetchEvents();
-  }, [fetchTimer, fetchRules, fetchTwitch, fetchIntegrations, fetchOverlaySettings, fetchEvents]);
+    if (adminSecret) {
+      fetchTwitch();
+      fetchIntegrations();
+    }
+  }, [authLoaded, adminSecret, fetchTimer, fetchRules, fetchTwitch, fetchIntegrations, fetchOverlaySettings, fetchEvents]);
 
   // Poll timer every 2 seconds
   useEffect(() => {
@@ -439,11 +475,12 @@ export default function AdminPage({ params }: { params: { id: string } }) {
   // ─── Timer Actions ───────────────────────────────────────────────────────
 
   async function timerAction(action: string, ms?: number) {
-    await fetch(`/api/${id}/timer`, {
+    const res = await fetch(`/api/${id}/timer`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify({ action, ms }),
     });
+    if (res.status === 401) { setAuthError(true); return; }
     fetchTimer();
   }
 
@@ -452,11 +489,12 @@ export default function AdminPage({ params }: { params: { id: string } }) {
   async function saveRule(field: string, value: number | boolean) {
     const updated = { ...rules, [field]: value } as TimeRules;
     setRules(updated);
-    await fetch(`/api/${id}/settings`, {
+    const res = await fetch(`/api/${id}/settings`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify({ [field]: value }),
     });
+    if (res.status === 401) { setAuthError(true); return; }
   }
 
   // ─── Twitch Actions ──────────────────────────────────────────────────────
@@ -464,28 +502,31 @@ export default function AdminPage({ params }: { params: { id: string } }) {
   async function connectTwitch() {
     const res = await fetch(`/api/${id}/twitch`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify({ action: "connect" }),
     });
+    if (res.status === 401) { setAuthError(true); return; }
     const data = await res.json();
     if (data.url) window.location.href = data.url;
   }
 
   async function disconnectTwitch() {
-    await fetch(`/api/${id}/twitch`, {
+    const res = await fetch(`/api/${id}/twitch`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify({ action: "disconnect" }),
     });
+    if (res.status === 401) { setAuthError(true); return; }
     fetchTwitch();
   }
 
   async function resubscribeTwitch() {
     const res = await fetch(`/api/${id}/twitch`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify({ action: "resubscribe" }),
     });
+    if (res.status === 401) { setAuthError(true); return; }
     const data = await res.json();
     if (data.created) {
       alert(`Subscriptions created: ${data.created.join(", ")}${data.errors?.length ? `\nErrors: ${data.errors.join(", ")}` : ""}`);
@@ -496,11 +537,12 @@ export default function AdminPage({ params }: { params: { id: string } }) {
   // ─── Integration Saving ──────────────────────────────────────────────────
 
   async function saveIntegration(field: string, value: string) {
-    await fetch(`/api/${id}/integrations`, {
+    const res = await fetch(`/api/${id}/integrations`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify({ [field]: value }),
     });
+    if (res.status === 401) { setAuthError(true); return; }
     fetchIntegrations();
   }
 
@@ -512,11 +554,12 @@ export default function AdminPage({ params }: { params: { id: string } }) {
       enabled_events: { ...overlaySettings.enabled_events, [event]: enabled },
     };
     setOverlaySettings(updated);
-    await fetch(`/api/${id}/settings?type=overlay`, {
+    const res = await fetch(`/api/${id}/settings?type=overlay`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify({ type: "overlay", enabled_events: updated.enabled_events }),
     });
+    if (res.status === 401) { setAuthError(true); return; }
   }
 
   // ─── Copy URL ─────────────────────────────────────────────────────────────
@@ -528,6 +571,58 @@ export default function AdminPage({ params }: { params: { id: string } }) {
   }
 
   // ─── Render ───────────────────────────────────────────────────────────────
+
+  // Show login gate if no secret
+  if (authLoaded && !adminSecret) {
+    return (
+      <div style={{ ...styles.page, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+        <div style={{ ...styles.card, maxWidth: 440, width: "100%", textAlign: "center" as const }}>
+          <div style={styles.cardTitle}>Admin Login</div>
+          <p style={{ ...styles.desc, marginBottom: "1rem" }}>
+            Enter your admin secret to access the dashboard.
+            You received this when you created the timer.
+          </p>
+          {authError && (
+            <p style={{ color: "var(--pink)", fontSize: "0.85rem", marginBottom: "0.75rem", fontWeight: 600 }}>
+              Invalid secret. Please try again.
+            </p>
+          )}
+          <input
+            type="password"
+            style={{ ...styles.inputWide, marginBottom: "0.75rem" }}
+            placeholder="Paste your admin secret..."
+            value={secretInput}
+            onChange={(e) => setSecretInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submitSecret()}
+          />
+          <button style={styles.btnPrimary} onClick={submitSecret}>
+            Enter
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show auth error inline if secret was rejected
+  if (authError) {
+    return (
+      <div style={{ ...styles.page, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+        <div style={{ ...styles.card, maxWidth: 440, width: "100%", textAlign: "center" as const }}>
+          <div style={styles.cardTitle}>Unauthorized</div>
+          <p style={{ color: "var(--pink)", fontSize: "0.9rem", marginBottom: "1rem" }}>
+            Your admin secret is invalid or expired.
+          </p>
+          <button style={styles.btnPrimary} onClick={() => {
+            localStorage.removeItem(`timer_${id}_secret`);
+            setAdminSecret("");
+            setAuthError(false);
+          }}>
+            Re-enter Secret
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const isPaused = timer.is_paused && !timer.ended;
   const timerColor = timer.ended

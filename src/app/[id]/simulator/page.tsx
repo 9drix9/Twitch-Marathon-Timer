@@ -49,17 +49,30 @@ export default function SimulatorPage({ params }: { params: { id: string } }) {
   const [timer, setTimer] = useState<TimerState | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [adminSecret, setAdminSecret] = useState<string>("");
+  const [secretInput, setSecretInput] = useState("");
+  const [authLoaded, setAuthLoaded] = useState(false);
+  const [authError, setAuthError] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(`timer_${id}_secret`);
+    if (stored) setAdminSecret(stored);
+    setAuthLoaded(true);
+  }, [id]);
+
+  function submitSecret() {
+    const val = secretInput.trim();
+    if (!val) return;
+    localStorage.setItem(`timer_${id}_secret`, val);
+    setAdminSecret(val);
+    setAuthError(false);
+  }
 
   async function fetchTimer() {
     try {
       const res = await fetch(`/api/${id}/timer`);
-      if (res.ok) {
-        const data = await res.json();
-        setTimer(data);
-      }
-    } catch {
-      // ignore fetch errors
-    }
+      if (res.ok) setTimer(await res.json());
+    } catch {}
   }
 
   useEffect(() => {
@@ -74,9 +87,17 @@ export default function SimulatorPage({ params }: { params: { id: string } }) {
     try {
       const res = await fetch(`/api/${id}/simulate`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(adminSecret ? { Authorization: `Bearer ${adminSecret}` } : {}),
+        },
         body: JSON.stringify({ type, meta }),
       });
+      if (res.status === 401) {
+        setAuthError(true);
+        setSending(false);
+        return;
+      }
       if (res.ok) {
         const data: SimulateResponse = await res.json();
         const added = formatAdded(data.time_added_ms);
@@ -90,6 +111,55 @@ export default function SimulatorPage({ params }: { params: { id: string } }) {
     } finally {
       setSending(false);
     }
+  }
+
+  // Login gate
+  if (authLoaded && (!adminSecret || authError)) {
+    return (
+      <div style={{
+        background: "var(--bg)", minHeight: "100vh", display: "flex",
+        flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem",
+      }}>
+        <div style={{
+          background: "var(--surface)", border: "1px solid var(--border)",
+          borderRadius: "12px", padding: "1.5rem", maxWidth: 440, width: "100%", textAlign: "center",
+        }}>
+          <div style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--purple)", marginBottom: "1rem", fontFamily: "var(--font-mono)" }}>
+            Simulator Login
+          </div>
+          <p style={{ fontSize: "0.85rem", color: "var(--text-dim)", marginBottom: "1rem" }}>
+            Enter your admin secret to use the simulator.
+          </p>
+          {authError && (
+            <p style={{ color: "var(--pink)", fontSize: "0.85rem", marginBottom: "0.75rem", fontWeight: 600 }}>
+              Invalid secret.
+            </p>
+          )}
+          <input
+            type="password"
+            style={{
+              padding: "0.4rem 0.6rem", borderRadius: "6px", border: "1px solid var(--border)",
+              background: "var(--bg)", color: "var(--text)", fontFamily: "var(--font-mono)",
+              fontSize: "0.85rem", width: "100%", outline: "none", marginBottom: "0.75rem",
+            }}
+            placeholder="Paste your admin secret..."
+            value={secretInput}
+            onChange={(e) => setSecretInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submitSecret()}
+          />
+          <button
+            onClick={submitSecret}
+            style={{
+              padding: "0.5rem 1rem", borderRadius: "8px", border: "1px solid var(--cyan)",
+              background: "rgba(0, 255, 242, 0.1)", color: "var(--cyan)", fontFamily: "var(--font-mono)",
+              fontSize: "0.85rem", cursor: "pointer", fontWeight: 600,
+            }}
+          >
+            Enter
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

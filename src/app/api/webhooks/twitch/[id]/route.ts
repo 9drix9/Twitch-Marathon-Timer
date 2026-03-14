@@ -8,8 +8,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const { id } = params;
   const body = await req.text();
 
-  // Verify signature
-  const secret = await getWebhookSecret();
+  // Verify signature (per-timer secret)
+  const secret = await getWebhookSecret(id);
   const msgId = req.headers.get("twitch-eventsub-message-id") || "";
   const timestamp = req.headers.get("twitch-eventsub-message-timestamp") || "";
   const sig = req.headers.get("twitch-eventsub-message-signature") || "";

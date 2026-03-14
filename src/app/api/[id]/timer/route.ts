@@ -8,6 +8,7 @@ import {
   resetTimer,
   setMaxCap,
 } from "@/lib/timer";
+import { verifyAdmin } from "@/lib/auth";
 
 export async function GET(
   req: NextRequest,
@@ -23,8 +24,32 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   const { id } = params;
-  const body = await req.json();
+
+  if (!(await verifyAdmin(id, req))) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  let body;
+  try { body = await req.json(); } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
   const { action, ms } = body;
+
+  if (typeof action !== "string") {
+    return NextResponse.json({ error: "Missing action" }, { status: 400 });
+  }
+
+  const validActions = ["pause", "resume", "add", "subtract", "reset", "set_cap"];
+  if (!validActions.includes(action)) {
+    return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+  }
+
+  if (["add", "subtract", "reset", "set_cap"].includes(action)) {
+    const msVal = action === "reset" ? (ms ?? 86400000) : ms;
+    if (typeof msVal !== "number" || msVal < 0 || msVal > 604800000) {
+      return NextResponse.json({ error: "Invalid ms value (0-604800000)" }, { status: 400 });
+    }
+  }
 
   switch (action) {
     case "pause":
@@ -45,8 +70,6 @@ export async function POST(
     case "set_cap":
       await setMaxCap(id, ms);
       break;
-    default:
-      return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   }
 
   const state = await getTimerState(id);

@@ -79,16 +79,13 @@ export async function getAppAccessToken(): Promise<string> {
   return data.access_token;
 }
 
-// ── Webhook secret (auto-generated if not in env) ───
+// ── Webhook secret (per-timer, auto-generated) ─────
 
-export async function getWebhookSecret(): Promise<string> {
-  if (process.env.TWITCH_WEBHOOK_SECRET)
-    return process.env.TWITCH_WEBHOOK_SECRET;
-
-  let secret = await redis().get<string>(SHARED_KEYS.webhookSecret);
+export async function getWebhookSecret(timerId: string): Promise<string> {
+  let secret = await redis().get<string>(keys(timerId).webhookSecret);
   if (!secret) {
     secret = crypto.randomBytes(32).toString("hex");
-    await redis().set(SHARED_KEYS.webhookSecret, secret);
+    await redis().set(keys(timerId).webhookSecret, secret);
   }
   return secret;
 }
@@ -186,7 +183,7 @@ export async function createAllSubscriptions(
   baseUrl: string
 ): Promise<{ created: string[]; errors: string[] }> {
   const appToken = await getAppAccessToken();
-  const secret = await getWebhookSecret();
+  const secret = await getWebhookSecret(timerId);
   const clientId = process.env.TWITCH_CLIENT_ID!;
   const callbackUrl = `${baseUrl}/api/webhooks/twitch/${timerId}`;
 

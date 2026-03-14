@@ -7,6 +7,7 @@ import {
   getAppAccessToken,
   createAllSubscriptions,
 } from "@/lib/twitch";
+import { verifyAdmin } from "@/lib/auth";
 
 const TWITCH_CLIENT_ID = process.env.TWITCH_CLIENT_ID!;
 
@@ -15,6 +16,11 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const { id } = params;
+
+  if (!(await verifyAdmin(id, req))) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const connection = await getTwitchConnection(id);
   if (!connection) {
     return NextResponse.json({ connected: false, subscriptions: [] });
