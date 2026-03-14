@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback } from "react";
 interface TimerState {
   remaining_ms: number;
   is_paused: boolean;
+  max_cap_ms: number;
   ended: boolean;
 }
 
@@ -361,6 +362,7 @@ export default function AdminPage({ params }: { params: { id: string } }) {
   const [timer, setTimer] = useState<TimerState>({
     remaining_ms: 0,
     is_paused: true,
+    max_cap_ms: 0,
     ended: false,
   });
 
@@ -395,6 +397,14 @@ export default function AdminPage({ params }: { params: { id: string } }) {
 
   // Copied state for URL copy buttons
   const [copied, setCopied] = useState<string | null>(null);
+
+  // Custom time inputs
+  const [addHours, setAddHours] = useState(0);
+  const [addMinutes, setAddMinutes] = useState(0);
+  const [setHours, setSetHours] = useState(0);
+  const [setMinutes, setSetMinutes] = useState(0);
+  const [capHours, setCapHours] = useState(48);
+  const [capMinutes, setCapMinutes] = useState(0);
 
   // ─── Data Fetching ───────────────────────────────────────────────────────
 
@@ -663,7 +673,9 @@ export default function AdminPage({ params }: { params: { id: string } }) {
             </span>
           )}
         </div>
-        <div style={styles.btnRow}>
+
+        {/* Start / Pause */}
+        <div style={{ ...styles.btnRow, marginBottom: "1rem" }}>
           {!timer.is_paused ? (
             <button style={styles.btn} onClick={() => timerAction("pause")}>
               Pause
@@ -673,18 +685,78 @@ export default function AdminPage({ params }: { params: { id: string } }) {
               Start
             </button>
           )}
-          <button style={styles.btn} onClick={() => timerAction("add", 5 * 60000)}>
-            +5 min
-          </button>
-          <button style={styles.btn} onClick={() => timerAction("add", 10 * 60000)}>
-            +10 min
-          </button>
-          <button style={styles.btn} onClick={() => timerAction("subtract", 5 * 60000)}>
-            -5 min
-          </button>
-          <button style={styles.btnDanger} onClick={() => timerAction("reset", 86400000)}>
-            Reset (24h)
-          </button>
+        </div>
+
+        {/* Quick Add / Subtract */}
+        <div style={{ fontSize: "0.85rem", color: "var(--text-dim)", marginBottom: "0.5rem" }}>Quick Adjust</div>
+        <div style={{ ...styles.btnRow, marginBottom: "1rem" }}>
+          <button style={styles.btn} onClick={() => timerAction("add", 60000)}>+1m</button>
+          <button style={styles.btn} onClick={() => timerAction("add", 5 * 60000)}>+5m</button>
+          <button style={styles.btn} onClick={() => timerAction("add", 10 * 60000)}>+10m</button>
+          <button style={styles.btn} onClick={() => timerAction("add", 30 * 60000)}>+30m</button>
+          <button style={styles.btn} onClick={() => timerAction("add", 3600000)}>+1h</button>
+          <button style={styles.btn} onClick={() => timerAction("subtract", 60000)}>-1m</button>
+          <button style={styles.btn} onClick={() => timerAction("subtract", 5 * 60000)}>-5m</button>
+          <button style={styles.btn} onClick={() => timerAction("subtract", 10 * 60000)}>-10m</button>
+          <button style={styles.btn} onClick={() => timerAction("subtract", 30 * 60000)}>-30m</button>
+          <button style={styles.btn} onClick={() => timerAction("subtract", 3600000)}>-1h</button>
+        </div>
+
+        {/* Custom Add/Subtract */}
+        <div style={{ fontSize: "0.85rem", color: "var(--text-dim)", marginBottom: "0.5rem" }}>Custom Amount</div>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1rem" }}>
+          <input type="number" min={0} max={999} style={{ ...styles.input, width: "65px" }}
+            value={addHours} onChange={(e) => setAddHours(Math.max(0, Number(e.target.value)))} />
+          <span style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>h</span>
+          <input type="number" min={0} max={59} style={{ ...styles.input, width: "65px" }}
+            value={addMinutes} onChange={(e) => setAddMinutes(Math.max(0, Math.min(59, Number(e.target.value))))} />
+          <span style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>m</span>
+          <button style={styles.btnPrimary} onClick={() => {
+            const ms = (addHours * 3600000) + (addMinutes * 60000);
+            if (ms > 0) timerAction("add", ms);
+          }}>+ Add</button>
+          <button style={styles.btnDanger} onClick={() => {
+            const ms = (addHours * 3600000) + (addMinutes * 60000);
+            if (ms > 0) timerAction("subtract", ms);
+          }}>- Subtract</button>
+        </div>
+
+        {/* Set Timer To */}
+        <div style={{ fontSize: "0.85rem", color: "var(--text-dim)", marginBottom: "0.5rem" }}>Set Timer To</div>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1rem" }}>
+          <input type="number" min={0} max={999} style={{ ...styles.input, width: "65px" }}
+            value={setHours} onChange={(e) => setSetHours(Math.max(0, Number(e.target.value)))} />
+          <span style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>h</span>
+          <input type="number" min={0} max={59} style={{ ...styles.input, width: "65px" }}
+            value={setMinutes} onChange={(e) => setSetMinutes(Math.max(0, Math.min(59, Number(e.target.value))))} />
+          <span style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>m</span>
+          <button style={styles.btnPrimary} onClick={() => {
+            const ms = (setHours * 3600000) + (setMinutes * 60000);
+            timerAction("reset", ms);
+          }}>Set</button>
+          <button style={styles.btn} onClick={() => timerAction("reset", 86400000)}>24h</button>
+          <button style={styles.btn} onClick={() => timerAction("reset", 43200000)}>12h</button>
+          <button style={styles.btn} onClick={() => timerAction("reset", 21600000)}>6h</button>
+        </div>
+
+        {/* Max Cap */}
+        <div style={{ fontSize: "0.85rem", color: "var(--text-dim)", marginBottom: "0.5rem" }}>
+          Max Cap (timer cannot exceed this)
+          <span style={{ marginLeft: "0.5rem", color: "var(--cyan)", fontFamily: "var(--font-mono)" }}>
+            Currently: {Math.floor(timer.max_cap_ms / 3600000)}h {Math.floor((timer.max_cap_ms % 3600000) / 60000)}m
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+          <input type="number" min={0} max={999} style={{ ...styles.input, width: "65px" }}
+            value={capHours} onChange={(e) => setCapHours(Math.max(0, Number(e.target.value)))} />
+          <span style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>h</span>
+          <input type="number" min={0} max={59} style={{ ...styles.input, width: "65px" }}
+            value={capMinutes} onChange={(e) => setCapMinutes(Math.max(0, Math.min(59, Number(e.target.value))))} />
+          <span style={{ fontSize: "0.8rem", color: "var(--text-dim)" }}>m</span>
+          <button style={styles.btnPrimary} onClick={() => {
+            const ms = (capHours * 3600000) + (capMinutes * 60000);
+            if (ms > 0) timerAction("set_cap", ms);
+          }}>Set Cap</button>
         </div>
       </div>
 
