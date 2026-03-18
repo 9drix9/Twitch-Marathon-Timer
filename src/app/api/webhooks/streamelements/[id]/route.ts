@@ -6,8 +6,9 @@ import { getRules, computeTimeForEvent } from "@/config/time-rules";
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const { id } = params;
 
-  // Verify the token matches what's stored
-  const integrations = await redis().get<{ streamelements_jwt?: string }>(keys(id).integrations);
+  // Verify the token is configured
+  const stored = await redis().get(keys(id).integrations);
+  const integrations = typeof stored === "string" ? JSON.parse(stored) : stored;
   if (!integrations?.streamelements_jwt) {
     return NextResponse.json({ error: "Not configured" }, { status: 400 });
   }

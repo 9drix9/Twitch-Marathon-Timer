@@ -49,6 +49,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   switch (subType) {
     case "channel.subscribe":
+      // Skip gift subs here — they're handled by channel.subscription.gift
+      if (event.is_gift) return NextResponse.json({ ok: true });
       const tierMap: Record<string, string> = { "1000": "sub_tier1", "2000": "sub_tier2", "3000": "sub_tier3" };
       eventType = tierMap[event.tier] || "sub_tier1";
       meta = { user: event.user_name, tier: event.tier };

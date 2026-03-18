@@ -7,6 +7,13 @@ interface Integrations {
   streamlabs_token?: string;
 }
 
+async function parseIntegrations(id: string): Promise<Integrations> {
+  const stored = await redis().get(keys(id).integrations);
+  if (!stored) return {};
+  if (typeof stored === "string") return JSON.parse(stored);
+  return stored as Integrations;
+}
+
 function maskToken(token: string | undefined): string | null {
   if (!token) return null;
   if (token.length <= 4) return "****";
@@ -21,10 +28,7 @@ export async function GET(
   if (!(await verifyAdmin(id, req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const stored = await redis().get(keys(id).integrations);
-  const integrations: Integrations = stored
-    ? (typeof stored === "string" ? JSON.parse(stored) : stored)
-    : {};
+  const integrations = await parseIntegrations(id);
 
   return NextResponse.json({
     streamelements_jwt: maskToken(integrations.streamelements_jwt),
@@ -43,10 +47,7 @@ export async function POST(
   const body = await req.json();
   const { streamelements_jwt, streamlabs_token } = body;
 
-  const existing = await redis().get(keys(id).integrations);
-  const current: Integrations = existing
-    ? (typeof existing === "string" ? JSON.parse(existing) : existing)
-    : {};
+  const current = await parseIntegrations(id);
 
   if (streamelements_jwt !== undefined) {
     current.streamelements_jwt = streamelements_jwt;
@@ -55,7 +56,7 @@ export async function POST(
     current.streamlabs_token = streamlabs_token;
   }
 
-  await redis().set(keys(id).integrations, JSON.stringify(current));
+  await redis().set(keys(id).integrations, current);
 
   return NextResponse.json({
     streamelements_jwt: maskToken(current.streamelements_jwt),

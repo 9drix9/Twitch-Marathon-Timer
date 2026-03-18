@@ -6,7 +6,8 @@ import { getRules, computeTimeForEvent } from "@/config/time-rules";
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const { id } = params;
 
-  const integrations = await redis().get<{ streamlabs_token?: string }>(keys(id).integrations);
+  const stored = await redis().get(keys(id).integrations);
+  const integrations = typeof stored === "string" ? JSON.parse(stored) : stored;
   if (!integrations?.streamlabs_token) {
     return NextResponse.json({ error: "Not configured" }, { status: 400 });
   }

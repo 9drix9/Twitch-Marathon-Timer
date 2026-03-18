@@ -192,7 +192,7 @@ export default function OverlayPage({ params }: { params: { id: string } }) {
             if (!settingKey) return true;
             return settings.enabled_events[settingKey];
           })
-          .slice(0, 5)
+          .slice(0, 1)
           .map((evt) => ({
             id: evt.id,
             text: buildEventText(evt),
