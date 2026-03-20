@@ -327,7 +327,8 @@ function Toggle({
 
 export default function AdminPage({ params }: { params: { id: string } }) {
   const { id } = params;
-  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL
+    || (typeof window !== "undefined" ? window.location.origin : "");
 
   // Admin auth
   const [adminSecret, setAdminSecret] = useState<string>("");
