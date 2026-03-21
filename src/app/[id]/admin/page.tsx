@@ -787,6 +787,7 @@ export default function AdminPage({ params }: { params: { id: string } }) {
                 {twitch.subscriptions.map((sub, i) => {
                   const friendly: Record<string, string> = {
                     "channel.subscribe": "Subscriptions",
+                    "channel.subscription.message": "Resubs",
                     "channel.subscription.gift": "Gift Subs",
                     "channel.cheer": "Bits / Cheers",
                     "channel.raid": "Raids",

@@ -55,6 +55,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       eventType = tierMap[event.tier] || "sub_tier1";
       meta = { user: event.user_name, tier: event.tier };
       break;
+    case "channel.subscription.message": {
+      // Resubs — user sends a resubscription message
+      const resubTierMap: Record<string, string> = { "1000": "sub_tier1", "2000": "sub_tier2", "3000": "sub_tier3" };
+      eventType = resubTierMap[event.tier] || "sub_tier1";
+      meta = { user: event.user_name, tier: event.tier, cumulative_months: event.cumulative_months };
+      break;
+    }
     case "channel.subscription.gift":
       eventType = "gifted_sub";
       meta = { user: event.user_name, count: event.total || 1 };

@@ -143,6 +143,12 @@ const EVENT_TYPES = [
     condition: (uid: string) => ({ broadcaster_user_id: uid }),
   },
   {
+    type: "channel.subscription.message",
+    version: "1",
+    label: "Resubs",
+    condition: (uid: string) => ({ broadcaster_user_id: uid }),
+  },
+  {
     type: "channel.subscription.gift",
     version: "1",
     label: "Gift Subs",
